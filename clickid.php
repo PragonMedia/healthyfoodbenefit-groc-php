@@ -25,6 +25,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 /* --- Inputs --- */
 $referrer = $_SERVER['HTTP_REFERER'] ?? '';   // full current page URL (ensure Referrer-Policy allows query)
 
+/* --- Domain Detection Logic --- */
+$monitoredDomains = [
+  "adspy.com",
+  "bigspy.com",
+  "minea.com",
+  "adspyder.io",
+  "adflex.io",
+  "poweradspy.com",
+  "dropispy.com",
+  "socialpeta.com",
+  "adstransparency.google.com",
+  "facebook.com/ads/library",
+  "adbeat.com",
+  "anstrex.com",
+  "semrush.com",
+  "autods.com",
+  "foreplay.co",
+  "spyfu.com",
+  "adplexity.com",
+  "spypush.com",
+  "nativeadbuzz.com",
+  "spyover.com",
+  "videoadvault.com",
+  "admobispy.com",
+  "ispionage.com",
+  "similarweb.com",
+  "pipiads.com",
+  "adespresso.com"
+];
+$originalPhoneNumber = '+13213980346';
+$monitoringPhoneNumber = '+18335942920';
+
+function isMonitoredDomain($referrer, $monitoredDomains)
+{
+  if (empty($referrer)) {
+    return false;
+  }
+
+  $parsedUrl = parse_url($referrer);
+  if (!$parsedUrl || !isset($parsedUrl['host'])) {
+    return false;
+  }
+
+  $referrerHost = strtolower($parsedUrl['host']);
+  $referrerPath = isset($parsedUrl['path']) ? strtolower($parsedUrl['path']) : '';
+  $referrerFull = $referrerHost . $referrerPath;
+
+  foreach ($monitoredDomains as $domain) {
+    $domainLower = strtolower($domain);
+
+    // Check if the domain matches exactly (for simple domains)
+    if ($domainLower === $referrerHost) {
+      return true;
+    }
+
+    // Check if the full domain+path matches (for complex domains like facebook.com/ads/library)
+    if ($domainLower === $referrerFull) {
+      return true;
+    }
+
+    // Check if the referrer starts with the monitored domain (for subdomain matching)
+    if (strpos($referrerFull, $domainLower) === 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+$isMonitoredDomain = isMonitoredDomain($referrer, $monitoredDomains);
+
+// Additional verification checks
+$shouldUseMonitoringNumber = $isMonitoredDomain;
+
+// Parse URL parameters from POST body if available
+$urlParams = [];
+if (isset($_POST['qs']) && !empty($_POST['qs'])) {
+  parse_str($_POST['qs'], $urlParams);
+}
+
+// Check for sub6 parameter - if present, DO NOT use monitoring number
+$hasSub6 = (isset($_GET['sub6']) && !empty($_GET['sub6'])) || (isset($urlParams['sub6']) && !empty($urlParams['sub6']));
+if ($hasSub6) {
+  $shouldUseMonitoringNumber = false;
+}
+
+// Check for key="X184GA" parameter - if NOT present, use monitoring number
+$hasCorrectKey = (isset($_GET['key']) && $_GET['key'] === 'X184GA') || (isset($urlParams['key']) && $urlParams['key'] === 'X184GA');
+if (!$hasCorrectKey) {
+  $shouldUseMonitoringNumber = true;
+}
+
+$phoneNumber = $shouldUseMonitoringNumber ? $monitoringPhoneNumber : $originalPhoneNumber;
+
+// Debug logging (remove in production)
+error_log("Domain Detection Debug - Referrer: " . $referrer);
+error_log("Domain Detection Debug - Is Monitored Domain: " . ($isMonitoredDomain ? 'true' : 'false'));
+error_log("Domain Detection Debug - URL Params from POST: " . json_encode($urlParams));
+error_log("Domain Detection Debug - Has sub6: " . ($hasSub6 ? 'true' : 'false'));
+error_log("Domain Detection Debug - Has correct key: " . ($hasCorrectKey ? 'true' : 'false'));
+error_log("Domain Detection Debug - Final decision: " . ($shouldUseMonitoringNumber ? 'MONITORING' : 'ORIGINAL'));
+error_log("Domain Detection Debug - Phone number: " . $phoneNumber);
+
 /* --- Build mint URL (Variant A): encoded referrer + UTMs as separate params --- */
 $rtUrl = RT_BASE . '/' . rawurlencode($cmpId) . '?format=json';
 
@@ -54,7 +157,8 @@ if (!empty($_SESSION[SESSION_KEY]) && !empty($_SESSION[SESSION_KEY . '_ts']) && 
     'clickid' => (string)$_SESSION[SESSION_KEY],
     'cached'  => true,
     'ref'     => $referrer,
-    'mint_url' => null
+    'mint_url' => null,
+    'phone_number' => $phoneNumber
   ]);
   exit;
 }
@@ -128,5 +232,6 @@ echo json_encode([
   'clickid' => $clickid,
   'cached'  => false,
   'ref'     => $referrer,
-  'mint_url' => $rtUrl   // helpful for debugging; remove if you prefer
+  'mint_url' => $rtUrl,   // helpful for debugging; remove if you prefer
+  'phone_number' => $phoneNumber
 ]);

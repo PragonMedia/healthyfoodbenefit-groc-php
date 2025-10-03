@@ -304,19 +304,26 @@ function formatPhoneNumber(phoneNumber) {
 function syncPhoneNumber() {
   const phoneNumberElement = document.getElementById("phone-number");
   if (phoneNumberElement) {
-    // Get the current phone number from the href attribute
-    const currentHref = phoneNumberElement.getAttribute("href");
-    const rawPhoneNumber = currentHref.replace(/\D/g, ""); // Extract numeric part from href
+    // Use dynamic phone number if available, otherwise fall back to current href
+    let phoneNumberToUse;
 
-    if (rawPhoneNumber.length === 11) {
+    if (window.dynamicPhoneNumber) {
+      phoneNumberToUse = window.dynamicPhoneNumber;
+    } else {
+      // Fallback to current href if no dynamic number is available
+      const currentHref = phoneNumberElement.getAttribute("href");
+      phoneNumberToUse = currentHref.replace(/\D/g, ""); // Extract numeric part from href
+    }
+
+    if (phoneNumberToUse && phoneNumberToUse.length === 11) {
       // Format the phone number
-      const formattedPhoneNumber = formatPhoneNumber(rawPhoneNumber);
+      const formattedPhoneNumber = formatPhoneNumber(phoneNumberToUse);
       // Update the text content if it's different
       if (phoneNumberElement.textContent.trim() !== formattedPhoneNumber) {
         phoneNumberElement.textContent = formattedPhoneNumber;
       }
       // Ensure href is correct
-      phoneNumberElement.href = `tel:${rawPhoneNumber}`;
+      phoneNumberElement.href = `tel:${phoneNumberToUse}`;
     }
   }
 }
