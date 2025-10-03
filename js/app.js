@@ -1,7 +1,7 @@
 // Load Ringba function - exactly as provided but as JavaScript function
 const loadRingba = () => {
   var script = document.createElement("script");
-  script.src = "//b-js.ringba.com/CA96589cff1d5d4fa48f459da7dbd3a728";
+  script.src = "//b-js.ringba.com/CAd4c016a37829477688c3482fb6fd01de";
   let timeoutId = setTimeout(addRingbaTags, 1000);
   script.onload = function () {
     clearTimeout(timeoutId);
